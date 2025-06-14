@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Note } from './Note';
 import { Target } from './Target';
@@ -20,9 +19,23 @@ const resultColors: Record<string, string> = {
   miss: 'text-red-500',
 };
 
+const laneColors = [
+  'bg-primary/20',
+  'bg-secondary/20',
+  'bg-accent/20',
+  'bg-blue-500/20',
+];
+
 export const Lane: React.FC<LaneProps> = ({ laneId, notes, laneKey, isPressed, feedback }) => {
   return (
     <div className="relative h-full w-1/4 border-r-2 border-l-2 border-white/10">
+      <div
+        className={cn(
+          'absolute inset-0 transition-opacity duration-100',
+          laneColors[laneId % laneColors.length],
+          isPressed ? 'opacity-100' : 'opacity-0'
+        )}
+      />
       <div className="absolute inset-0 overflow-hidden">
         {notes.map(note => (
           <Note key={note.id} y={note.y} lane={laneId} />
