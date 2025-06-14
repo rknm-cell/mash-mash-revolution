@@ -99,7 +99,10 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
         'hit-effect': 'hit-effect 0.2s ease-out',
         'text-pop': 'text-pop 0.5s ease-out forwards',
-			}
+			},
+			fontFamily: {
+				sans: ['SupremeSpike', 'sans-serif'],
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],

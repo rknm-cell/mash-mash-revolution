@@ -1,13 +1,21 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { GameState, NoteData, HitFeedback, HitResult, GameMode } from "@/types/game";
+
 import {
   beatmap,
-  NOTE_SPEED,
-  HIT_WINDOW_PERFECT,
   HIT_WINDOW_GOOD,
   HIT_WINDOW_OK,
+
 } from "@/lib/beatmap";
 import { Song } from "@/lib/songs";
+
+  HIT_WINDOW_PERFECT,
+  NOTE_SPEED
+} from '@/lib/beatmap';
+import { GameState, HitFeedback, HitResult } from '@/types/game';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 
 // Add miss sound effect
 const missSound = new Audio("/sounds/miss.mp3");
@@ -293,13 +301,16 @@ export const useGameEngine = () => {
             }
 
             const notes = hit
-              ? prev.notes.filter(
-                  (n) =>
-                    !(
-                      n.lane === laneIndex &&
-                      Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
-                    )
-                )
+              ? prev.notes.map((n) => {
+                  if (
+                    n.lane === laneIndex &&
+                    Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
+                  ) {
+                    // Mark as fading instead of removing immediately
+                    return { ...n, fading: true };
+                  }
+                  return n;
+                })
               : prev.notes;
 
             const newFeedback: HitFeedback = {
@@ -357,6 +368,30 @@ export const useGameEngine = () => {
       }
     };
   }, [gameState.isPlaying, gameLoop]);
+
+  // Remove faded notes after a short delay
+  useEffect(() => {
+    if (!gameState.isPlaying) return;
+    const fadeTimeout = setTimeout(() => {
+      setGameState((prev) => ({
+        ...prev,
+        notes: prev.notes.filter((n) => !n.fading),
+      }));
+    }, 300); // 300ms fade duration
+    return () => clearTimeout(fadeTimeout);
+  }, [gameState.notes, gameState.isPlaying]);
+
+  // Remove faded notes after a short delay
+  useEffect(() => {
+    if (!gameState.isPlaying) return;
+    const fadeTimeout = setTimeout(() => {
+      setGameState((prev) => ({
+        ...prev,
+        notes: prev.notes.filter((n) => !n.fading),
+      }));
+    }, 300); // 300ms fade duration
+    return () => clearTimeout(fadeTimeout);
+  }, [gameState.notes, gameState.isPlaying]);
 
   return {
     gameState,

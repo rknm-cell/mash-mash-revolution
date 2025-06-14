@@ -1,6 +1,9 @@
-import React from 'react';
+
 import { cn } from '@/lib/utils';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+
+import React from 'react';
+
 
 interface TargetProps {
   laneKey: string;
@@ -31,10 +34,10 @@ const getKeyDisplay = (key: string) => {
 
 export const Target: React.FC<TargetProps & { lane: number }> = ({ laneKey, isPressed, lane }) => {
   return (
-    <div className="absolute bottom-10 w-full h-10 flex items-center justify-center">
+    <div className="absolute bottom-[10%] w-full h-[8%] flex items-center justify-center">
       <div
         className={cn(
-          'w-24 h-8 border-t-4 rounded-t-md transition-all duration-100',
+          'w-[80%] h-[80%] border-t-4 rounded-t-md transition-all duration-100',
           keyColors[lane % keyColors.length],
           isPressed ? 'bg-white/20 scale-105' : 'bg-white/5'
         )}

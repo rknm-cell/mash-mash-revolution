@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useGameEngine } from '@/hooks/useGameEngine';
-import { Lane } from './Lane';
-import { ScoreDisplay } from './ScoreDisplay';
-import { SongSelection } from './SongSelection';
-import { songs, Song } from '@/lib/songs';
 import { Button } from '@/components/ui/button';
+import { useGameEngine } from '@/hooks/useGameEngine';
+import { Song, songs } from '@/lib/songs';
 import {
   Gamepad2,
-  Trophy,
-  Headphones,
   HeadphoneOff,
   Music,
   Zap,
   Keyboard,
+
 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Lane } from './Lane';
+import { ScoreDisplay } from './ScoreDisplay';
+import { SongSelection } from './SongSelection';
 
 export const GameContainer: React.FC = () => {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [screen, setScreen] = useState<'home' | 'select-song' | 'game'>('home');
   const {
     gameState,
     pressedKeys,
@@ -36,9 +36,13 @@ export const GameContainer: React.FC = () => {
     }
   }, [selectedSong, audioRef]);
 
+  const handleStartGame = () => {
+    setScreen('select-song');
+  };
+
   const handleSelectSong = (song: Song) => {
     setSelectedSong(song);
-    // Small delay to ensure audio is loaded before starting
+    setScreen('game');
     setTimeout(() => {
       startGame();
     }, 100);
@@ -46,10 +50,14 @@ export const GameContainer: React.FC = () => {
 
   const handleGameOver = () => {
     setSelectedSong(null);
+    setScreen('home');
   };
 
+  // Set the margin to match the ScoreDisplay width (w-56 = 14rem)
+  const sideMargin = '14rem';
+
   return (
-    <div className='w-full h-screen bg-background flex flex-col items-center justify-center font-sans'>
+    <div className='w-full h-screen bg-background flex flex-col items-center justify-center font-sans overflow-hidden'>
       <audio ref={audioRef} preload='auto' />
 
       {/* Headphone status indicator */}
@@ -73,9 +81,7 @@ export const GameContainer: React.FC = () => {
         )}
       </div>
 
-      {!selectedSong ? (
-        <SongSelection songs={songs} onSelectSong={handleSelectSong} />
-      ) : !gameState.isPlaying ? (
+      {screen === 'home' && (
         <div className='text-center'>
           {gameState.score > 0 ? (
             <>
@@ -140,9 +146,14 @@ export const GameContainer: React.FC = () => {
               </Button>
             </>
           )}
+
         </div>
-      ) : (
-        <>
+      )}
+      {screen === 'select-song' && (
+        <SongSelection songs={songs} onSelectSong={handleSelectSong} />
+      )}
+      {screen === 'game' && selectedSong && (
+        <div className="relative w-full h-full flex items-center justify-center">
           <ScoreDisplay
             score={gameState.score}
             combo={gameState.combo}
@@ -161,8 +172,14 @@ export const GameContainer: React.FC = () => {
             </Button>
           </div>
           <div
-            className='relative bg-black/50 w-[400px] h-[700px] rounded-lg shadow-2xl shadow-primary/20 overflow-hidden'
-            style={{ perspective: '800px' }}
+            className='relative bg-black/50 h-screen rounded-lg shadow-2xl shadow-primary/20 overflow-hidden'
+            style={{
+              perspective: '800px',
+              marginLeft: sideMargin,
+              marginRight: sideMargin,
+              width: `calc(100% - 2 * ${sideMargin})`,
+              maxWidth: '900px',
+            }}
           >
             <div className='flex h-full w-full'>
               {LANE_KEYS.map((keys, index) => {
@@ -183,7 +200,7 @@ export const GameContainer: React.FC = () => {
               })}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
