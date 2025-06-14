@@ -1,8 +1,7 @@
-
 import { Button } from '@/components/ui/button';
 import { useGameEngine } from '@/hooks/useGameEngine';
 import { song } from '@/lib/beatmap';
-import { Gamepad2 } from 'lucide-react';
+import { Gamepad2, Trophy } from 'lucide-react';
 import React from 'react';
 import { Lane } from './Lane';
 import { ScoreDisplay } from './ScoreDisplay';
@@ -42,10 +41,15 @@ export const GameContainer: React.FC = () => {
               </p>
             </>
           )}
-          <Button onClick={startGame} size='lg' className='text-2xl p-8'>
+          <Button onClick={startGame} size='lg' className='text-2xl p-8 mb-6'>
             <Gamepad2 className='mr-4 h-8 w-8' />
             {gameState.score > 0 ? 'Play Again' : 'Start Game'}
           </Button>
+          <div className="mt-6 text-lg text-foreground/80 space-y-2">
+            <div>keys:</div>
+            {/* <div className="font-mono">[ arrow keys ]</div> */}
+            <div className="font-mono">[ smash the keyboard ]</div>
+          </div>
         </div>
       ) : (
         <div className="relative w-full h-full flex items-center justify-center">
