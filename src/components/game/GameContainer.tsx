@@ -4,7 +4,14 @@ import { Lane } from './Lane';
 import { ScoreDisplay } from './ScoreDisplay';
 import { song } from '@/lib/beatmap';
 import { Button } from '@/components/ui/button';
-import { Gamepad2, Trophy, Headphones, HeadphoneOff } from 'lucide-react';
+import {
+  Gamepad2,
+  Trophy,
+  Headphones,
+  HeadphoneOff,
+  Music,
+  Zap,
+} from 'lucide-react';
 
 export const GameContainer: React.FC = () => {
   const {
