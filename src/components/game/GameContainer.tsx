@@ -17,7 +17,7 @@ import { SongSelection } from './SongSelection';
 
 export const GameContainer: React.FC = () => {
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [isEasyMode, setIsEasyMode] = useState(false);
+  const [isEasyMode, setIsEasyMode] = useState(true);
   const {
     gameState,
     pressedKeys,
@@ -57,10 +57,11 @@ export const GameContainer: React.FC = () => {
 
       {/* Headphone status indicator */}
       <div
-        className={`fixed top-4 right-4 flex items-center gap-2 p-2 rounded-lg ${hasHeadphones
-          ? 'bg-green-500/20 text-green-500'
-          : 'bg-red-500/20 text-red-500'
-          }`}
+        className={`fixed top-4 right-4 flex items-center gap-2 p-2 rounded-lg ${
+          hasHeadphones
+            ? 'bg-green-500/20 text-green-500'
+            : 'bg-red-500/20 text-red-500'
+        }`}
       >
         {hasHeadphones ? (
           <>
@@ -76,22 +77,24 @@ export const GameContainer: React.FC = () => {
       </div>
 
       {!selectedSong ? (
-        <div className="text-center">
+        <div className='text-center'>
           <h1 className='text-6xl font-extrabold text-primary mb-4'>
             Mash Mash Revolution
           </h1>
           <p className='text-xl text-muted-foreground mb-8'>
             Get mashing to the beat!
           </p>
-          <div className="flex flex-col items-center gap-4">
+          <div className='flex flex-col items-center gap-4'>
             <Button
               onClick={toggleMode}
               size='lg'
               className='text-xl p-6'
-              variant={isEasyMode ? "default" : "outline"}
+              variant={isEasyMode ? 'default' : 'outline'}
             >
               <Star className='mr-4 h-6 w-6' />
-              {isEasyMode ? 'Easy Mode: Single Keys' : 'Normal Mode: Multiple Keys'}
+              {isEasyMode
+                ? 'Easy Mode: Single Keys'
+                : 'Normal Mode: Multiple Keys'}
             </Button>
             <SongSelection songs={songs} onSelectSong={handleSelectSong} />
           </div>
@@ -153,7 +156,7 @@ export const GameContainer: React.FC = () => {
         </div>
       ) : (
         <>
-          <div className="fixed top-4 left-4 z-50">
+          <div className='fixed top-4 left-4 z-50'>
             <ScoreDisplay
               score={gameState.score}
               combo={gameState.combo}
@@ -174,15 +177,23 @@ export const GameContainer: React.FC = () => {
             <div className='flex h-full w-full'>
               {LANE_KEYS.map((keys, index) => {
                 const pressedKeysInLane = Array.isArray(keys)
-                  ? keys.filter(key => pressedKeys[key]).length
+                  ? keys.filter((key) => pressedKeys[key]).length
                   : pressedKeys[keys];
                 return (
                   <Lane
                     key={index}
                     laneId={index}
                     notes={gameState.notes.filter((n) => n.lane === index)}
-                    laneKey={Array.isArray(keys) ? keys.join('/').toUpperCase() : keys.toUpperCase()}
-                    isPressed={Array.isArray(keys) ? pressedKeysInLane >= 2 : pressedKeysInLane}
+                    laneKey={
+                      Array.isArray(keys)
+                        ? keys.join('/').toUpperCase()
+                        : keys.toUpperCase()
+                    }
+                    isPressed={
+                      Array.isArray(keys)
+                        ? pressedKeysInLane >= 2
+                        : pressedKeysInLane
+                    }
                     feedback={gameState.hitFeedback.filter(
                       (f) => f.lane === index
                     )}
