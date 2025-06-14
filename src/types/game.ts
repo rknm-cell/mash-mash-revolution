@@ -3,6 +3,7 @@ export type NoteData = {
   time: number;
   lane: number;
   y: number;
+  fading?: boolean;
 };
 
 export type HitResult = 'perfect' | 'good' | 'ok' | 'miss';
