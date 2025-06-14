@@ -1,4 +1,3 @@
-
 export const NOTE_SPEED = 0.5; // pixels per millisecond
 export const LANE_COUNT = 4;
 export const HIT_WINDOW_PERFECT = 50;
@@ -8,9 +7,8 @@ export const HIT_WINDOW_OK = 150;
 // Song: "Feel The Rhythm" by Alex Smith (Fictional)
 // Audio Source: https://cdn.pixabay.com/download/audio/2022/11/21/audio_a1bf391054.mp3 (Creative Commons)
 export const song = {
-  url: "https://cdn.pixabay.com/download/audio/2022/11/21/audio_a1bf391054.mp3",
+  url: '/12 Pop It In (2) 1.mp3',
   bpm: 128,
-  duration: 60 * 1000, // 1 minute
 };
 
 // A simple beatmap generator for demonstration
@@ -22,7 +20,9 @@ export const generateBeatmap = () => {
   let currentTime = 2000; // Start notes after 2 seconds
   let idCounter = 0;
 
-  for (let i = 0; i < 150; i++) {
+  // Generate notes until we reach a reasonable duration (3 minutes)
+  const maxDuration = 3 * 60 * 1000; // 3 minutes in milliseconds
+  while (currentTime < maxDuration) {
     notes.push({
       id: `note-${idCounter++}`,
       time: currentTime,
