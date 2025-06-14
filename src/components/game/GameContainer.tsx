@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGameEngine } from '@/hooks/useGameEngine';
 import { Lane } from './Lane';
 import { ScoreDisplay } from './ScoreDisplay';
-import { song } from '@/lib/beatmap';
+import { SongSelection } from './SongSelection';
+import { songs, Song } from '@/lib/songs';
 import { Button } from '@/components/ui/button';
 import {
   Gamepad2,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react';
 
 export const GameContainer: React.FC = () => {
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const {
     gameState,
     pressedKeys,
@@ -23,9 +25,29 @@ export const GameContainer: React.FC = () => {
     hasHeadphones,
   } = useGameEngine();
 
+  // Update audio source when song changes
+  useEffect(() => {
+    if (audioRef.current && selectedSong) {
+      audioRef.current.src = selectedSong.url;
+      audioRef.current.load(); // Force reload of the audio
+    }
+  }, [selectedSong, audioRef]);
+
+  const handleSelectSong = (song: Song) => {
+    setSelectedSong(song);
+    // Small delay to ensure audio is loaded before starting
+    setTimeout(() => {
+      startGame();
+    }, 100);
+  };
+
+  const handleGameOver = () => {
+    setSelectedSong(null);
+  };
+
   return (
     <div className='w-full h-screen bg-background flex flex-col items-center justify-center font-sans'>
-      <audio ref={audioRef} src={song.url} preload='auto' />
+      <audio ref={audioRef} preload='auto' />
 
       {/* Headphone status indicator */}
       <div
@@ -48,7 +70,9 @@ export const GameContainer: React.FC = () => {
         )}
       </div>
 
-      {!gameState.isPlaying ? (
+      {!selectedSong ? (
+        <SongSelection songs={songs} onSelectSong={handleSelectSong} />
+      ) : !gameState.isPlaying ? (
         <div className='text-center'>
           {gameState.score > 0 ? (
             <>
@@ -79,6 +103,14 @@ export const GameContainer: React.FC = () => {
                   </p>
                 </div>
               </div>
+              <Button
+                onClick={handleGameOver}
+                size='lg'
+                className='text-2xl p-8'
+              >
+                <Gamepad2 className='mr-4 h-8 w-8' />
+                Back to Song Selection
+              </Button>
             </>
           ) : (
             <>
@@ -88,12 +120,12 @@ export const GameContainer: React.FC = () => {
               <p className='text-xl text-muted-foreground mb-8'>
                 Get ready to tap to the beat!
               </p>
+              <Button onClick={startGame} size='lg' className='text-2xl p-8'>
+                <Gamepad2 className='mr-4 h-8 w-8' />
+                Start Game
+              </Button>
             </>
           )}
-          <Button onClick={startGame} size='lg' className='text-2xl p-8'>
-            <Gamepad2 className='mr-4 h-8 w-8' />
-            {gameState.score > 0 ? 'Play Again' : 'Start Game'}
-          </Button>
         </div>
       ) : (
         <>
