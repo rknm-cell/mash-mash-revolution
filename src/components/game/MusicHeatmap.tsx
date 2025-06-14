@@ -21,7 +21,7 @@ export const MusicHeatmap: React.FC<MusicHeatmapProps> = ({ audioRef }) => {
       audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioCtxRef.current = audioCtx;
       analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 256;
+      analyser.fftSize = 64; // Low-res for heatmap
       source = audioCtx.createMediaElementSource(audioRef.current!);
       source.connect(analyser);
       analyser.connect(audioCtx.destination);
@@ -40,36 +40,15 @@ export const MusicHeatmap: React.FC<MusicHeatmapProps> = ({ audioRef }) => {
       const dataArray = new Uint8Array(bufferLength);
       analyserRef.current.getByteFrequencyData(dataArray);
 
-      // Calculate average amplitude for pulsing glow
-      const avg = dataArray.reduce((a, b) => a + b, 0) / bufferLength;
-      const pulse = 0.7 + 0.6 * (avg / 255);
-
       ctx.clearRect(0, 0, width, height);
-
-      // Animate horizontal wave offset
-      const time = Date.now() / 800;
       const cellWidth = width / bufferLength;
       for (let i = 0; i < bufferLength; i++) {
         const value = dataArray[i];
         const intensity = value / 255;
-        // Color cycling
-        const hue = (220 - intensity * 180 + time * 40 + i * 2) % 360;
-        const sat = 80 + intensity * 20;
-        const light = 30 + intensity * 50 * pulse;
-        // Horizontal wave
-        const wave = Math.sin(time + i / 4) * 0.5 + 0.5;
-        const barHeight = height * (0.5 + 0.5 * intensity * wave);
-        ctx.fillStyle = `hsl(${hue},${sat}%,${light}%)`;
-        ctx.fillRect(i * cellWidth, height - barHeight, cellWidth, barHeight);
+        const color = `rgba(${Math.round(255 * intensity)},${Math.round(80 * intensity)},${Math.round(200 * (1-intensity))},0.25)`;
+        ctx.fillStyle = color;
+        ctx.fillRect(i * cellWidth, 0, cellWidth, height);
       }
-
-      // Add a pulsing glow overlay
-      ctx.save();
-      ctx.globalAlpha = 0.18 * pulse;
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
-
       if (running) animationRef.current = requestAnimationFrame(draw);
     };
 

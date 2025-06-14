@@ -260,18 +260,16 @@ export const useGameEngine = () => {
               }
             }
 
-            const notes = hit
-              ? prev.notes.map((n) => {
-                  if (
-                    n.lane === laneIndex &&
-                    Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
-                  ) {
-                    // Mark as fading instead of removing immediately
-                    return { ...n, fading: true };
-                  }
-                  return n;
-                })
-              : prev.notes;
+
+        const notes = hit
+          ? prev.notes.filter(
+              (n) =>
+                !(
+                  n.lane === laneIndex &&
+                  Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
+                )
+            )
+          : prev.notes;
 
             const newFeedback: HitFeedback = {
               id: `fb-${Date.now()}`,
