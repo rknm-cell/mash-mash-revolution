@@ -1,8 +1,8 @@
+import { cn } from '@/lib/utils';
+import { HitFeedback, NoteData } from '@/types/game';
 import React from 'react';
 import { Note } from './Note';
 import { Target } from './Target';
-import { NoteData, HitFeedback } from '@/types/game';
-import { cn } from '@/lib/utils';
 
 interface LaneProps {
   laneId: number;
@@ -42,7 +42,7 @@ export const Lane: React.FC<LaneProps> = ({ laneId, notes, laneKey, isPressed, f
         ))}
       </div>
       <Target laneKey={laneKey} isPressed={isPressed} lane={laneId} />
-      <div className="absolute bottom-20 w-full flex flex-col items-center">
+      <div className="absolute bottom-[15%] w-full flex flex-col items-center">
         {feedback.map(fb => (
           <div
             key={fb.id}

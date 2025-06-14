@@ -1,6 +1,5 @@
-
-import React from 'react';
 import { cn } from '@/lib/utils';
+import React from 'react';
 
 interface NoteProps {
   y: number;
@@ -18,12 +17,13 @@ export const Note: React.FC<NoteProps> = ({ y, lane }) => {
   return (
     <div
       className={cn(
-        'absolute w-full h-8 rounded-md shadow-lg',
+        'absolute w-[80%] h-[5%] rounded-md shadow-lg',
         laneColors[lane % laneColors.length]
       )}
       style={{
         top: `${y}px`,
         transform: 'translateY(-50%)',
+        left: '10%',
       }}
     />
   );

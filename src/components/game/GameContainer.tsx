@@ -1,17 +1,21 @@
-import React from 'react';
+
+import { Button } from '@/components/ui/button';
 import { useGameEngine } from '@/hooks/useGameEngine';
+import { song } from '@/lib/beatmap';
+import { Gamepad2 } from 'lucide-react';
+import React from 'react';
 import { Lane } from './Lane';
 import { ScoreDisplay } from './ScoreDisplay';
-import { song } from '@/lib/beatmap';
-import { Button } from '@/components/ui/button';
-import { Gamepad2, Trophy } from 'lucide-react';
 
 export const GameContainer: React.FC = () => {
   const { gameState, pressedKeys, startGame, audioRef, LANE_KEYS } =
     useGameEngine();
 
+  // Set the margin to match the ScoreDisplay width (w-56 = 14rem)
+  const sideMargin = '14rem';
+
   return (
-    <div className='w-full h-screen bg-background flex flex-col items-center justify-center font-sans'>
+    <div className='w-full h-screen bg-background flex flex-col items-center justify-center font-sans overflow-hidden'>
       <audio ref={audioRef} src={song.url} preload='auto' />
 
       {!gameState.isPlaying ? (
@@ -44,11 +48,17 @@ export const GameContainer: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <>
+        <div className="relative w-full h-full flex items-center justify-center">
           <ScoreDisplay score={gameState.score} combo={gameState.combo} />
           <div
-            className='relative bg-black/50 w-[400px] h-[700px] rounded-lg shadow-2xl shadow-primary/20 overflow-hidden'
-            style={{ perspective: '800px' }}
+            className='relative bg-black/50 h-screen rounded-lg shadow-2xl shadow-primary/20 overflow-hidden'
+            style={{
+              perspective: '800px',
+              marginLeft: sideMargin,
+              marginRight: sideMargin,
+              width: `calc(100% - 2 * ${sideMargin})`,
+              maxWidth: '900px', // optional: limit max width for ultra-wide screens
+            }}
           >
             <div className='flex h-full w-full'>
               {LANE_KEYS.map((key, index) => (
@@ -65,7 +75,7 @@ export const GameContainer: React.FC = () => {
               ))}
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
