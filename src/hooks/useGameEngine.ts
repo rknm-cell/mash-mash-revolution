@@ -9,6 +9,10 @@ import {
   HIT_WINDOW_OK,
 } from '@/lib/beatmap';
 
+// Add miss sound effect
+const missSound = new Audio('/sounds/miss.mp3');
+missSound.volume = 1.0; // Set volume to 100%
+
 const initialState: GameState = {
   notes: [],
   score: 0,
@@ -20,10 +24,10 @@ const initialState: GameState = {
 };
 
 const LANE_KEYS = [
-  ['w', 'a', 's', 'd','x'],  // Lane 0: WASD
-  ['t', 'f', 'g', 'h','b,'],  // Lane 1: TFGH
-  ['i', 'j', 'k', 'l','m'],  // Lane 2: IJKL
-  ['p', ';', "'", 'l','.'],  // Lane 3: PL;'
+  ['w', 'a', 's', 'd','x','z','q'],  // Lane 0: WASD
+  ['t', 'f', 'g', 'h','b','e','v','c'],  // Lane 1: TFGH
+  ['i', 'j', 'k', 'l','m','n'],  // Lane 2: IJKL
+  ['p', ';', "'", 'l','.',';',],  // Lane 3: PL;'
 ];
 const TARGET_Y_POSITION = 600; // Corresponds to bottom-10 in Target.tsx on a ~700px tall container
 
@@ -101,6 +105,9 @@ export const useGameEngine = () => {
         .filter((note) => {
           if (note.y > TARGET_Y_POSITION + HIT_WINDOW_OK) {
             newCombo = 0; // Missed note, reset combo
+            // Play miss sound
+            missSound.currentTime = 0;
+            missSound.play().catch(() => {}); // Ignore any play errors
             return false; // Remove note
           }
           return true;
