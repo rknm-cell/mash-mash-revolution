@@ -38,7 +38,7 @@ export const Lane: React.FC<LaneProps> = ({ laneId, notes, laneKey, isPressed, f
       />
       <div className="absolute inset-0 overflow-hidden">
         {notes.map(note => (
-          <Note key={note.id} y={note.y} lane={laneId} />
+          <Note key={note.id} y={note.y} lane={laneId} fading={note.fading} />
         ))}
       </div>
       <Target laneKey={laneKey} isPressed={isPressed} lane={laneId} />

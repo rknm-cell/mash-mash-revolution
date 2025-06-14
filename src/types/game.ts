@@ -1,9 +1,9 @@
-
 export type NoteData = {
   id: string;
   time: number;
   lane: number;
   y: number;
+  fading?: boolean;
 };
 
 export type HitResult = 'perfect' | 'good' | 'ok' | 'miss';
