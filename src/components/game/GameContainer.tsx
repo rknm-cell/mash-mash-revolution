@@ -115,10 +115,10 @@ export const GameContainer: React.FC = () => {
           ) : (
             <>
               <h1 className='text-6xl font-extrabold text-primary mb-4'>
-                Rhythm Hero
+                Mash Mash Revolution
               </h1>
               <p className='text-xl text-muted-foreground mb-8'>
-                Get ready to tap to the beat!
+                Get mashing to the beat!
               </p>
               <Button onClick={startGame} size='lg' className='text-2xl p-8'>
                 <Gamepad2 className='mr-4 h-8 w-8' />
@@ -140,18 +140,21 @@ export const GameContainer: React.FC = () => {
             style={{ perspective: '800px' }}
           >
             <div className='flex h-full w-full'>
-              {LANE_KEYS.map((key, index) => (
-                <Lane
-                  key={index}
-                  laneId={index}
-                  notes={gameState.notes.filter((n) => n.lane === index)}
-                  laneKey={key.toUpperCase()}
-                  isPressed={!!pressedKeys[key]}
-                  feedback={gameState.hitFeedback.filter(
-                    (f) => f.lane === index
-                  )}
-                />
-              ))}
+              {LANE_KEYS.map((keys, index) => {
+                const pressedKeysInLane = keys.filter(key => pressedKeys[key]).length;
+                return (
+                  <Lane
+                    key={index}
+                    laneId={index}
+                    notes={gameState.notes.filter((n) => n.lane === index)}
+                    laneKey={keys.join('/').toUpperCase()}
+                    isPressed={pressedKeysInLane >= 2}
+                    feedback={gameState.hitFeedback.filter(
+                      (f) => f.lane === index
+                    )}
+                  />
+                );
+              })}
             </div>
           </div>
         </>
