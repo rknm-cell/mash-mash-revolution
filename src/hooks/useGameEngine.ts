@@ -10,10 +10,6 @@ import { GameState, HitFeedback, HitResult } from '@/types/game';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Song } from '@/lib/songs';
 
-// Add miss sound effect
-const missSound = new Audio('/sounds/miss.mp3');
-missSound.volume = 1.0; // Set volume to 100%
-
 const initialState: GameState = {
   notes: [],
   score: 0,
@@ -48,10 +44,19 @@ export const useGameEngine = (isEasyMode: boolean = false) => {
   const [pressedKeys, setPressedKeys] = useState<Record<string, boolean>>({});
   const [beatmap, setBeatmap] = useState<Note[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const missSoundRef = useRef<HTMLAudioElement | null>(null);
   const gameLoopRef = useRef<number>();
   const [songDuration, setSongDuration] = useState<number>(0);
   const [hasHeadphones, setHasHeadphones] = useState<boolean>(false);
   const [targetYPosition, setTargetYPosition] = useState(getTargetYPosition());
+
+  // Initialize miss sound effect
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      missSoundRef.current = new Audio('/sounds/miss.mp3');
+      missSoundRef.current.volume = 1.0;
+    }
+  }, []);
 
   // Load beatmap when component mounts
   useEffect(() => {
@@ -75,6 +80,8 @@ export const useGameEngine = (isEasyMode: boolean = false) => {
 
   // Function to check if headphones are connected
   const checkHeadphones = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+
     try {
       // Request audio output device access
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -123,6 +130,8 @@ export const useGameEngine = (isEasyMode: boolean = false) => {
 
   // Listen for device changes
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const handleDeviceChange = () => {
       checkHeadphones();
     };
@@ -220,8 +229,10 @@ export const useGameEngine = (isEasyMode: boolean = false) => {
           if (note.y > targetYPosition + HIT_WINDOW_OK) {
             newCombo = 0; // Missed note, reset combo
             // Play miss sound
-            missSound.currentTime = 0;
-            missSound.play().catch(() => {}); // Ignore any play errors
+            if (missSoundRef.current) {
+              missSoundRef.current.currentTime = 0;
+              missSoundRef.current.play().catch(() => {}); // Ignore any play errors
+            }
             return false; // Remove note
           }
           return true;
