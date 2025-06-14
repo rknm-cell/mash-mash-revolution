@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, NoteData, HitFeedback, HitResult } from '@/types/game';
 import {
   beatmap,
-  song,
   NOTE_SPEED,
   HIT_WINDOW_PERFECT,
   HIT_WINDOW_GOOD,
   HIT_WINDOW_OK,
 } from '@/lib/beatmap';
+import { Song } from '@/lib/songs';
 
 // Add miss sound effect
 const missSound = new Audio('/sounds/miss.mp3');
@@ -17,13 +17,10 @@ const initialState: GameState = {
   notes: [],
   score: 0,
   combo: 0,
-  biggestCombo: 0,
   startTime: null,
   isPlaying: false,
   hitFeedback: [],
   songTime: 0,
-  totalNotes: 0,
-  hitNotes: 0,
 };
 
 const LANE_KEYS = [
@@ -113,14 +110,23 @@ export const useGameEngine = () => {
 
   const startGame = useCallback(() => {
     if (audioRef.current) {
+      // Reset audio state
+      audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current.muted = !hasHeadphones;
-      audioRef.current.play();
+
+      // Start playing
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.error('Error playing audio:', error);
+        });
+      }
+
       setGameState({
         ...initialState,
         isPlaying: true,
         startTime: Date.now(),
-        totalNotes: beatmap.length,
       });
     }
   }, [hasHeadphones]);
@@ -223,8 +229,6 @@ export const useGameEngine = () => {
         let result: HitResult = 'miss';
         let newScore = prev.score;
         let newCombo = prev.combo;
-        let newHitNotes = prev.hitNotes;
-        let newBiggestCombo = prev.biggestCombo;
 
         for (const note of notesInLane) {
           const diff = Math.abs(note.y - TARGET_Y_POSITION);
@@ -240,11 +244,6 @@ export const useGameEngine = () => {
               newScore += 100;
             }
             newCombo += 1;
-            newHitNotes += 1;
-            // Update biggest combo if current combo is higher
-            if (newCombo > newBiggestCombo) {
-              newBiggestCombo = newCombo;
-            }
             hit = true;
             break; // only hit one note per key press
           }
@@ -252,12 +251,12 @@ export const useGameEngine = () => {
 
         const notes = hit
           ? prev.notes.filter(
-            (n) =>
-              !(
-                n.lane === laneIndex &&
-                Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
-              )
-          )
+              (n) =>
+                !(
+                  n.lane === laneIndex &&
+                  Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
+                )
+            )
           : prev.notes;
 
         const newFeedback: HitFeedback = {
@@ -270,9 +269,7 @@ export const useGameEngine = () => {
           ...prev,
           score: newScore,
           combo: hit ? newCombo : 0,
-          biggestCombo: newBiggestCombo,
           notes,
-          hitNotes: newHitNotes,
           hitFeedback: [
             ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
             newFeedback,
