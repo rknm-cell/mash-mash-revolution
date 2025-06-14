@@ -1,7 +1,13 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, NoteData, HitFeedback, HitResult } from '@/types/game';
-import { beatmap, song, NOTE_SPEED, HIT_WINDOW_PERFECT, HIT_WINDOW_GOOD, HIT_WINDOW_OK } from '@/lib/beatmap';
+import {
+  beatmap,
+  song,
+  NOTE_SPEED,
+  HIT_WINDOW_PERFECT,
+  HIT_WINDOW_GOOD,
+  HIT_WINDOW_OK,
+} from '@/lib/beatmap';
 
 const initialState: GameState = {
   notes: [],
@@ -21,6 +27,7 @@ export const useGameEngine = () => {
   const [pressedKeys, setPressedKeys] = useState<Record<string, boolean>>({});
   const audioRef = useRef<HTMLAudioElement>(null);
   const gameLoopRef = useRef<number>();
+  const [songDuration, setSongDuration] = useState<number>(0);
 
   const startGame = useCallback(() => {
     if (audioRef.current) {
@@ -34,6 +41,20 @@ export const useGameEngine = () => {
     }
   }, []);
 
+  // Listen for audio metadata to get actual duration
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      const handleLoadedMetadata = () => {
+        setSongDuration(audio.duration * 1000); // Convert to milliseconds
+      };
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      return () => {
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      };
+    }
+  }, []);
+
   const gameLoop = useCallback(() => {
     if (!gameState.isPlaying || !gameState.startTime) {
       return;
@@ -42,95 +63,133 @@ export const useGameEngine = () => {
     const now = Date.now();
     const songTime = now - gameState.startTime;
 
-    setGameState(prev => {
+    // Check if song has ended using actual duration
+    if (songDuration > 0 && songTime >= songDuration) {
+      setGameState((prev) => ({
+        ...prev,
+        isPlaying: false,
+        startTime: null,
+      }));
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      return;
+    }
+
+    setGameState((prev) => {
       // Spawn new notes
       const newNotesToSpawn = beatmap
-        .filter(note => note.time >= prev.songTime && note.time < songTime)
-        .map(note => ({ ...note, id: `${note.id}-${Math.random()}`, y: 0 }));
+        .filter((note) => note.time >= prev.songTime && note.time < songTime)
+        .map((note) => ({ ...note, id: `${note.id}-${Math.random()}`, y: 0 }));
 
       let currentNotes = [...prev.notes, ...newNotesToSpawn];
       let newCombo = prev.combo;
       let newScore = prev.score;
 
       // Update note positions and check for misses
-      currentNotes = currentNotes.map(note => {
-        const timeSinceSpawn = songTime - note.time;
-        const y = timeSinceSpawn * NOTE_SPEED;
-        return { ...note, y };
-      }).filter(note => {
-        if (note.y > TARGET_Y_POSITION + HIT_WINDOW_OK) {
-          newCombo = 0; // Missed note, reset combo
-          return false; // Remove note
-        }
-        return true;
-      });
-      
-      // Clear old feedback
-      const hitFeedback = prev.hitFeedback.filter(f => Date.now() - parseInt(f.id.split('-')[1]) < 500);
+      currentNotes = currentNotes
+        .map((note) => {
+          const timeSinceSpawn = songTime - note.time;
+          const y = timeSinceSpawn * NOTE_SPEED;
+          return { ...note, y };
+        })
+        .filter((note) => {
+          if (note.y > TARGET_Y_POSITION + HIT_WINDOW_OK) {
+            newCombo = 0; // Missed note, reset combo
+            return false; // Remove note
+          }
+          return true;
+        });
 
-      return { ...prev, notes: currentNotes, songTime, combo: newCombo, score: newScore, hitFeedback };
+      // Clear old feedback
+      const hitFeedback = prev.hitFeedback.filter(
+        (f) => Date.now() - parseInt(f.id.split('-')[1]) < 500
+      );
+
+      return {
+        ...prev,
+        notes: currentNotes,
+        songTime,
+        combo: newCombo,
+        score: newScore,
+        hitFeedback,
+      };
     });
 
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState.isPlaying, gameState.startTime]);
+  }, [gameState.isPlaying, gameState.startTime, songDuration]);
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const key = e.key.toLowerCase();
-    if (!LANE_KEYS.includes(key) || !gameState.isPlaying) return;
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (!LANE_KEYS.includes(key) || !gameState.isPlaying) return;
 
-    setPressedKeys(prev => ({ ...prev, [key]: true }));
+      setPressedKeys((prev) => ({ ...prev, [key]: true }));
 
-    const laneIndex = LANE_KEYS.indexOf(key);
-    const songTime = Date.now() - (gameState.startTime || 0);
+      const laneIndex = LANE_KEYS.indexOf(key);
+      const songTime = Date.now() - (gameState.startTime || 0);
 
-    setGameState(prev => {
-      const notesInLane = prev.notes.filter(n => n.lane === laneIndex);
-      let hit = false;
-      let result: HitResult = 'miss';
-      let newScore = prev.score;
-      let newCombo = prev.combo;
+      setGameState((prev) => {
+        const notesInLane = prev.notes.filter((n) => n.lane === laneIndex);
+        let hit = false;
+        let result: HitResult = 'miss';
+        let newScore = prev.score;
+        let newCombo = prev.combo;
 
-      for (const note of notesInLane) {
-        const diff = Math.abs(note.y - TARGET_Y_POSITION);
-        if (diff <= HIT_WINDOW_OK) {
+        for (const note of notesInLane) {
+          const diff = Math.abs(note.y - TARGET_Y_POSITION);
+          if (diff <= HIT_WINDOW_OK) {
             if (diff <= HIT_WINDOW_PERFECT) {
-                result = 'perfect';
-                newScore += 300;
+              result = 'perfect';
+              newScore += 300;
             } else if (diff <= HIT_WINDOW_GOOD) {
-                result = 'good';
-                newScore += 200;
+              result = 'good';
+              newScore += 200;
             } else {
-                result = 'ok';
-                newScore += 100;
+              result = 'ok';
+              newScore += 100;
             }
             newCombo += 1;
             hit = true;
             break; // only hit one note per key press
+          }
         }
-      }
 
-      const notes = hit ? prev.notes.filter(n => !(n.lane === laneIndex && Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK)) : prev.notes;
-      
-      const newFeedback: HitFeedback = {
-        id: `fb-${Date.now()}`,
-        lane: laneIndex,
-        result,
-      };
+        const notes = hit
+          ? prev.notes.filter(
+              (n) =>
+                !(
+                  n.lane === laneIndex &&
+                  Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
+                )
+            )
+          : prev.notes;
 
-      return {
-        ...prev,
-        score: newScore,
-        combo: hit ? newCombo : 0,
-        notes,
-        hitFeedback: [...prev.hitFeedback.filter(f => f.lane !== laneIndex), newFeedback],
-      };
-    });
-  }, [gameState.isPlaying, gameState.startTime]);
+        const newFeedback: HitFeedback = {
+          id: `fb-${Date.now()}`,
+          lane: laneIndex,
+          result,
+        };
+
+        return {
+          ...prev,
+          score: newScore,
+          combo: hit ? newCombo : 0,
+          notes,
+          hitFeedback: [
+            ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
+            newFeedback,
+          ],
+        };
+      });
+    },
+    [gameState.isPlaying, gameState.startTime]
+  );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     const key = e.key.toLowerCase();
     if (LANE_KEYS.includes(key)) {
-      setPressedKeys(prev => ({ ...prev, [key]: false }));
+      setPressedKeys((prev) => ({ ...prev, [key]: false }));
     }
   }, []);
 
