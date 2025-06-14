@@ -13,10 +13,13 @@ const initialState: GameState = {
   notes: [],
   score: 0,
   combo: 0,
+  biggestCombo: 0,
   startTime: null,
   isPlaying: false,
   hitFeedback: [],
   songTime: 0,
+  totalNotes: 0,
+  hitNotes: 0,
 };
 
 const LANE_KEYS = ['d', 'f', 'j', 'k'];
@@ -37,6 +40,7 @@ export const useGameEngine = () => {
         ...initialState,
         isPlaying: true,
         startTime: Date.now(),
+        totalNotes: beatmap.length,
       });
     }
   }, []);
@@ -135,6 +139,8 @@ export const useGameEngine = () => {
         let result: HitResult = 'miss';
         let newScore = prev.score;
         let newCombo = prev.combo;
+        let newHitNotes = prev.hitNotes;
+        let newBiggestCombo = prev.biggestCombo;
 
         for (const note of notesInLane) {
           const diff = Math.abs(note.y - TARGET_Y_POSITION);
@@ -150,6 +156,11 @@ export const useGameEngine = () => {
               newScore += 100;
             }
             newCombo += 1;
+            newHitNotes += 1;
+            // Update biggest combo if current combo is higher
+            if (newCombo > newBiggestCombo) {
+              newBiggestCombo = newCombo;
+            }
             hit = true;
             break; // only hit one note per key press
           }
@@ -157,12 +168,12 @@ export const useGameEngine = () => {
 
         const notes = hit
           ? prev.notes.filter(
-              (n) =>
-                !(
-                  n.lane === laneIndex &&
-                  Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
-                )
-            )
+            (n) =>
+              !(
+                n.lane === laneIndex &&
+                Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
+              )
+          )
           : prev.notes;
 
         const newFeedback: HitFeedback = {
@@ -175,7 +186,9 @@ export const useGameEngine = () => {
           ...prev,
           score: newScore,
           combo: hit ? newCombo : 0,
+          biggestCombo: newBiggestCombo,
           notes,
+          hitNotes: newHitNotes,
           hitFeedback: [
             ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
             newFeedback,
