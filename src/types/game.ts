@@ -1,4 +1,3 @@
-
 export type NoteData = {
   id: string;
   time: number;
@@ -18,8 +17,11 @@ export type GameState = {
   notes: NoteData[];
   score: number;
   combo: number;
+  biggestCombo: number;
   startTime: number | null;
   isPlaying: boolean;
   hitFeedback: HitFeedback[];
   songTime: number;
+  totalNotes: number;
+  hitNotes: number;
 };
