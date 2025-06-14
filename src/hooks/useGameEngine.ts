@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, NoteData, HitFeedback, HitResult } from '@/types/game';
 import {
   beatmap,
-  song,
   NOTE_SPEED,
   HIT_WINDOW_PERFECT,
   HIT_WINDOW_GOOD,
   HIT_WINDOW_OK,
 } from '@/lib/beatmap';
+import { Song } from '@/lib/songs';
 
 // Add miss sound effect
 const missSound = new Audio('/sounds/miss.mp3');
@@ -17,13 +17,10 @@ const initialState: GameState = {
   notes: [],
   score: 0,
   combo: 0,
-  biggestCombo: 0,
   startTime: null,
   isPlaying: false,
   hitFeedback: [],
   songTime: 0,
-  totalNotes: 0,
-  hitNotes: 0,
 };
 
 const LANE_KEYS = [
@@ -113,14 +110,23 @@ export const useGameEngine = () => {
 
   const startGame = useCallback(() => {
     if (audioRef.current) {
+      // Reset audio state
+      audioRef.current.pause();
       audioRef.current.currentTime = 0;
       audioRef.current.muted = !hasHeadphones;
-      audioRef.current.play();
+
+      // Start playing
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.error('Error playing audio:', error);
+        });
+      }
+
       setGameState({
         ...initialState,
         isPlaying: true,
         startTime: Date.now(),
-        totalNotes: beatmap.length,
       });
     }
   }, [hasHeadphones]);
@@ -254,6 +260,7 @@ export const useGameEngine = () => {
                 break; // only hit one note per key press
               }
             }
+
 
             const notes = hit
               ? prev.notes.filter(
