@@ -215,67 +215,85 @@ export const useGameEngine = () => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
+      // Find which lane this key belongs to
+      const laneIndex = LANE_KEYS.findIndex(keys => keys.includes(key));
+      if (laneIndex === -1 || !gameState.isPlaying) return;
 
-      if (!LANE_KEYS.includes(key) || !gameState.isPlaying) return;
+      setPressedKeys((prev) => {
+        const newPressedKeys = { ...prev, [key]: true };
+        
+        // Check if we have enough keys pressed in this lane
+        const keysPressedInLane = LANE_KEYS[laneIndex].filter(k => newPressedKeys[k]).length;
+        if (keysPressedInLane >= 2) {
+          // Only process the hit if we have enough keys pressed
+          const songTime = Date.now() - (gameState.startTime || 0);
+          
+          setGameState((prev) => {
+            const notesInLane = prev.notes.filter((n) => n.lane === laneIndex);
+            let hit = false;
+            let result: HitResult = 'miss';
+            let newScore = prev.score;
+            let newCombo = prev.combo;
+            let newHitNotes = prev.hitNotes;
+            let newBiggestCombo = prev.biggestCombo;
 
-      setPressedKeys((prev) => ({ ...prev, [key]: true }));
-
-      const laneIndex = LANE_KEYS.indexOf(key);
-      const songTime = Date.now() - (gameState.startTime || 0);
-
-      setGameState((prev) => {
-        const notesInLane = prev.notes.filter((n) => n.lane === laneIndex);
-        let hit = false;
-        let result: HitResult = 'miss';
-        let newScore = prev.score;
-        let newCombo = prev.combo;
-
-        for (const note of notesInLane) {
-          const diff = Math.abs(note.y - TARGET_Y_POSITION);
-          if (diff <= HIT_WINDOW_OK) {
-            if (diff <= HIT_WINDOW_PERFECT) {
-              result = 'perfect';
-              newScore += 300;
-            } else if (diff <= HIT_WINDOW_GOOD) {
-              result = 'good';
-              newScore += 200;
-            } else {
-              result = 'ok';
-              newScore += 100;
+            for (const note of notesInLane) {
+              const diff = Math.abs(note.y - TARGET_Y_POSITION);
+              if (diff <= HIT_WINDOW_OK) {
+                if (diff <= HIT_WINDOW_PERFECT) {
+                  result = 'perfect';
+                  newScore += 300;
+                } else if (diff <= HIT_WINDOW_GOOD) {
+                  result = 'good';
+                  newScore += 200;
+                } else {
+                  result = 'ok';
+                  newScore += 100;
+                }
+                newCombo += 1;
+                newHitNotes += 1;
+                // Update biggest combo if current combo is higher
+                if (newCombo > newBiggestCombo) {
+                  newBiggestCombo = newCombo;
+                }
+                hit = true;
+                break; // only hit one note per key press
+              }
             }
-            newCombo += 1;
-            hit = true;
-            break; // only hit one note per key press
-          }
-        }
 
-        const notes = hit
-          ? prev.notes.filter(
-              (n) =>
-                !(
-                  n.lane === laneIndex &&
-                  Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
+
+            const notes = hit
+              ? prev.notes.filter(
+                  (n) =>
+                    !(
+                      n.lane === laneIndex &&
+                      Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
+                    )
                 )
-            )
-          : prev.notes;
+              : prev.notes;
 
-        const newFeedback: HitFeedback = {
-          id: `fb-${Date.now()}`,
-          lane: laneIndex,
-          result,
-        };
+            const newFeedback: HitFeedback = {
+              id: `fb-${Date.now()}`,
+              lane: laneIndex,
+              result,
+            };
 
-        return {
-          ...prev,
-          score: newScore,
-          combo: hit ? newCombo : 0,
-          notes,
-          hitFeedback: [
-            ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
-            newFeedback,
-          ],
-        };
-
+            return {
+              ...prev,
+              score: newScore,
+              combo: hit ? newCombo : 0,
+              biggestCombo: newBiggestCombo,
+              notes,
+              hitNotes: newHitNotes,
+              hitFeedback: [
+                ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
+                newFeedback,
+              ],
+            };
+          });
+        }
+        
+        return newPressedKeys;
       });
     },
     [gameState.isPlaying, gameState.startTime]
