@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Lane } from './Lane';
+import { MusicHeatmap } from './MusicHeatmap';
 import { ScoreDisplay } from './ScoreDisplay';
 import { SongSelection } from './SongSelection';
 
@@ -90,42 +91,45 @@ export const GameContainer: React.FC = () => {
         <SongSelection songs={songs} onSelectSong={handleSelectSong} />
       )}
       {screen === 'game' && selectedSong && (
-        <div className="relative w-full h-full flex items-center justify-center">
-          <ScoreDisplay
-            score={gameState.score}
-            combo={gameState.combo}
-            totalNotes={gameState.totalNotes}
-            hitNotes={gameState.hitNotes}
-          />
-          <div
-            className='relative bg-black/50 h-screen rounded-lg shadow-2xl shadow-primary/20 overflow-hidden'
-            style={{
-              perspective: '800px',
-              marginLeft: sideMargin,
-              marginRight: sideMargin,
-              width: `calc(100% - 2 * ${sideMargin})`,
-              maxWidth: '900px',
-            }}
-          >
-            <div className='flex h-full w-full'>
-              {LANE_KEYS.map((keys, index) => {
-                const pressedKeysInLane = keys.filter(key => pressedKeys[key]).length;
-                return (
-                  <Lane
-                    key={index}
-                    laneId={index}
-                    notes={gameState.notes.filter((n) => n.lane === index)}
-                    laneKey={keys.join('/').toUpperCase()}
-                    isPressed={pressedKeysInLane >= 2}
-                    feedback={gameState.hitFeedback.filter(
-                      (f) => f.lane === index
-                    )}
-                  />
-                );
-              })}
+        <>
+          <MusicHeatmap audioRef={audioRef} />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <ScoreDisplay
+              score={gameState.score}
+              combo={gameState.combo}
+              totalNotes={gameState.totalNotes}
+              hitNotes={gameState.hitNotes}
+            />
+            <div
+              className='relative bg-black/50 h-screen rounded-lg shadow-2xl shadow-primary/20 overflow-hidden'
+              style={{
+                perspective: '800px',
+                marginLeft: sideMargin,
+                marginRight: sideMargin,
+                width: `calc(100% - 2 * ${sideMargin})`,
+                maxWidth: '900px',
+              }}
+            >
+              <div className='flex h-full w-full'>
+                {LANE_KEYS.map((keys, index) => {
+                  const pressedKeysInLane = keys.filter(key => pressedKeys[key]).length;
+                  return (
+                    <Lane
+                      key={index}
+                      laneId={index}
+                      notes={gameState.notes.filter((n) => n.lane === index)}
+                      laneKey={keys.join('/').toUpperCase()}
+                      isPressed={pressedKeysInLane >= 2}
+                      feedback={gameState.hitFeedback.filter(
+                        (f) => f.lane === index
+                      )}
+                    />
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
