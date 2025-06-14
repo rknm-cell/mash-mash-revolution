@@ -5,7 +5,6 @@ import { ScoreDisplay } from './ScoreDisplay';
 import { song } from '@/lib/beatmap';
 import { Button } from '@/components/ui/button';
 import { Gamepad2, Trophy, Headphones, HeadphoneOff } from 'lucide-react';
-import { Gamepad2, Trophy, Music, Zap } from 'lucide-react';
 
 export const GameContainer: React.FC = () => {
   const {
@@ -59,7 +58,11 @@ export const GameContainer: React.FC = () => {
                 <div className='flex items-center'>
                   <Music className='h-8 w-8 text-blue-400 mr-4' />
                   <p className='text-2xl font-semibold text-foreground'>
-                    Notes Hit: {gameState.hitNotes}/{gameState.totalNotes} ({Math.round((gameState.hitNotes / gameState.totalNotes) * 100)}%)
+                    Notes Hit: {gameState.hitNotes}/{gameState.totalNotes} (
+                    {Math.round(
+                      (gameState.hitNotes / gameState.totalNotes) * 100
+                    )}
+                    %)
                   </p>
                 </div>
                 <div className='flex items-center'>
