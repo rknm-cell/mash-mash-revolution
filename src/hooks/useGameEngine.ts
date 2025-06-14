@@ -28,10 +28,81 @@ export const useGameEngine = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const gameLoopRef = useRef<number>();
   const [songDuration, setSongDuration] = useState<number>(0);
+  const [hasHeadphones, setHasHeadphones] = useState<boolean>(false);
+
+  // Function to check if headphones are connected
+  const checkHeadphones = useCallback(async () => {
+    try {
+      // Request audio output device access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioContext = new AudioContext();
+      const source = audioContext.createMediaStreamSource(stream);
+      const destination = audioContext.createMediaStreamDestination();
+      source.connect(destination);
+
+      // Get all audio output devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioOutputs = devices.filter(
+        (device) => device.kind === 'audiooutput'
+      );
+
+      // Check if any audio output device is connected and is not the default speaker
+      const hasAudioOutput = audioOutputs.some((device) => {
+        const label = device.label.toLowerCase();
+        // Check if the device is a headphone or has "headphone" in its name
+        return (
+          label.includes('headphone') ||
+          label.includes('headset') ||
+          label.includes('earphone') ||
+          label.includes('airpods') ||
+          label.includes('bluetooth')
+        );
+      });
+
+      // If we have an audio element, set its muted state
+      if (audioRef.current) {
+        audioRef.current.muted = !hasAudioOutput;
+      }
+
+      setHasHeadphones(hasAudioOutput);
+
+      // Cleanup
+      stream.getTracks().forEach((track) => track.stop());
+      audioContext.close();
+    } catch (error) {
+      console.error('Error checking audio devices:', error);
+      // If we can't check devices, assume no headphones and mute
+      if (audioRef.current) {
+        audioRef.current.muted = true;
+      }
+      setHasHeadphones(false);
+    }
+  }, []);
+
+  // Listen for device changes
+  useEffect(() => {
+    const handleDeviceChange = () => {
+      checkHeadphones();
+    };
+
+    // Check initially
+    checkHeadphones();
+
+    // Listen for device changes
+    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+
+    return () => {
+      navigator.mediaDevices.removeEventListener(
+        'devicechange',
+        handleDeviceChange
+      );
+    };
+  }, [checkHeadphones]);
 
   const startGame = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
+      audioRef.current.muted = !hasHeadphones;
       audioRef.current.play();
       setGameState({
         ...initialState,
@@ -39,7 +110,7 @@ export const useGameEngine = () => {
         startTime: Date.now(),
       });
     }
-  }, []);
+  }, [hasHeadphones]);
 
   // Listen for audio metadata to get actual duration
   useEffect(() => {
@@ -213,5 +284,12 @@ export const useGameEngine = () => {
     };
   }, [gameState.isPlaying, gameLoop]);
 
-  return { gameState, pressedKeys, startGame, audioRef, LANE_KEYS };
+  return {
+    gameState,
+    pressedKeys,
+    startGame,
+    audioRef,
+    LANE_KEYS,
+    hasHeadphones,
+  };
 };

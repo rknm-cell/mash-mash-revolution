@@ -4,15 +4,42 @@ import { Lane } from './Lane';
 import { ScoreDisplay } from './ScoreDisplay';
 import { song } from '@/lib/beatmap';
 import { Button } from '@/components/ui/button';
-import { Gamepad2, Trophy } from 'lucide-react';
+import { Gamepad2, Trophy, Headphones, HeadphoneOff } from 'lucide-react';
 
 export const GameContainer: React.FC = () => {
-  const { gameState, pressedKeys, startGame, audioRef, LANE_KEYS } =
-    useGameEngine();
+  const {
+    gameState,
+    pressedKeys,
+    startGame,
+    audioRef,
+    LANE_KEYS,
+    hasHeadphones,
+  } = useGameEngine();
 
   return (
     <div className='w-full h-screen bg-background flex flex-col items-center justify-center font-sans'>
       <audio ref={audioRef} src={song.url} preload='auto' />
+
+      {/* Headphone status indicator */}
+      <div
+        className={`fixed top-4 right-4 flex items-center gap-2 p-2 rounded-lg ${
+          hasHeadphones
+            ? 'bg-green-500/20 text-green-500'
+            : 'bg-red-500/20 text-red-500'
+        }`}
+      >
+        {hasHeadphones ? (
+          <>
+            <Headphones className='h-5 w-5' />
+            <span className='text-sm font-medium'>Headphones Connected</span>
+          </>
+        ) : (
+          <>
+            <HeadphoneOff className='h-5 w-5' />
+            <span className='text-sm font-medium'>No Headphones</span>
+          </>
+        )}
+      </div>
 
       {!gameState.isPlaying ? (
         <div className='text-center'>
