@@ -4,7 +4,10 @@ import { Song, songs } from '@/lib/songs';
 import {
   Gamepad2,
   HeadphoneOff,
-  Headphones
+  Music,
+  Zap,
+  Keyboard,
+
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Lane } from './Lane';
@@ -22,6 +25,8 @@ export const GameContainer: React.FC = () => {
     audioRef,
     LANE_KEYS,
     hasHeadphones,
+    toggleControlMode,
+    controlMode,
   } = useGameEngine();
 
   // Update audio source when song changes
@@ -79,12 +84,70 @@ export const GameContainer: React.FC = () => {
 
       {screen === 'home' && (
         <div className='text-center'>
-          <h1 className='text-6xl font-extrabold text-primary mb-4'>Mash Mash Revolution</h1>
-          <p className='text-xl text-muted-foreground mb-8'>Get mashing to the beat!</p>
-          <Button onClick={handleStartGame} size='lg' className='text-2xl p-8'>
-            <Gamepad2 className='mr-4 h-8 w-8' />
-            Start Game
-          </Button>
+          {gameState.score > 0 ? (
+            <>
+              <h1 className='text-6xl font-extrabold text-primary mb-4'>
+                Game Over!
+              </h1>
+              <div className='flex flex-col items-center justify-center mb-8 space-y-4'>
+                <div className='flex items-center'>
+                  <Trophy className='h-12 w-12 text-yellow-400 mr-4' />
+                  <p className='text-4xl font-bold text-foreground'>
+                    Final Score: {gameState.score.toLocaleString()}
+                  </p>
+                </div>
+                <div className='flex items-center'>
+                  <Music className='h-8 w-8 text-blue-400 mr-4' />
+                  <p className='text-2xl font-semibold text-foreground'>
+                    Notes Hit: {gameState.hitNotes}/{gameState.totalNotes} (
+                    {Math.round(
+                      (gameState.hitNotes / gameState.totalNotes) * 100
+                    )}
+                    %)
+                  </p>
+                </div>
+                <div className='flex items-center'>
+                  <Zap className='h-8 w-8 text-yellow-400 mr-4' />
+                  <p className='text-2xl font-semibold text-foreground'>
+                    Biggest Combo: {gameState.biggestCombo}
+                  </p>
+                </div>
+              </div>
+              <div className='flex flex-col items-center gap-4'>
+                <Button
+                  onClick={handleGameOver}
+                  size='lg'
+                  className='text-2xl p-8'
+                >
+                  <Gamepad2 className='mr-4 h-8 w-8' />
+                  Back to Song Selection
+                </Button>
+                <Button 
+                  onClick={toggleControlMode} 
+                  variant="outline" 
+                  size='lg' 
+                  className='text-xl'
+                >
+                  <Keyboard className='mr-4 h-6 w-6' />
+                  {controlMode === 'simple' ? 'Switch to Complex Controls' : 'Switch to Simple Controls'}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className='text-6xl font-extrabold text-primary mb-4'>
+                Mash Mash Revolution
+              </h1>
+              <p className='text-xl text-muted-foreground mb-8'>
+                Get mashing to the beat!
+              </p>
+              <Button onClick={startGame} size='lg' className='text-2xl p-8'>
+                <Gamepad2 className='mr-4 h-8 w-8' />
+                Start Game
+              </Button>
+            </>
+          )}
+
         </div>
       )}
       {screen === 'select-song' && (

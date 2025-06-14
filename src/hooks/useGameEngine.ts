@@ -1,16 +1,39 @@
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { GameState, NoteData, HitFeedback, HitResult, GameMode } from "@/types/game";
+
 import {
   beatmap,
   HIT_WINDOW_GOOD,
   HIT_WINDOW_OK,
+
+} from "@/lib/beatmap";
+import { Song } from "@/lib/songs";
+
   HIT_WINDOW_PERFECT,
   NOTE_SPEED
 } from '@/lib/beatmap';
 import { GameState, HitFeedback, HitResult } from '@/types/game';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+
 // Add miss sound effect
-const missSound = new Audio('/sounds/miss.mp3');
+const missSound = new Audio("/sounds/miss.mp3");
 missSound.volume = 1.0; // Set volume to 100%
+
+const SIMPLE_LANE_KEYS = [
+  ['a', 'arrowleft',], // Lane 0: WASD + Arrows
+  ['w', 'arrowup', ], // Lane 1: WASD + Arrows
+  ['s', 'arrowdown',], // Lane 2: WASD + Arrows
+  [ 'd', 'arrowright'], // Lane 3: WASD + Arrows
+];
+
+const COMPLEX_LANE_KEYS = [
+  ['w', 'a', 's', 'd', 'x', 'z', 'q'], // Lane 0: WASD
+  ['t', 'f', 'g', 'h', 'b', 'e', 'v'], // Lane 1: TFGH
+  ['u', 'j', 'k', 'l', 'm', 'n'], // Lane 2: IJKL
+  ['p', ';', "'", 'l', '.', ';', 'o'], // Lane 3: PL;'
+];
 
 const initialState: GameState = {
   notes: [],
@@ -20,14 +43,12 @@ const initialState: GameState = {
   isPlaying: false,
   hitFeedback: [],
   songTime: 0,
+  hitNotes: 0,
+  biggestCombo: 0,
+  gameMode: 'easy',
+  hasHeadphones: false,
 };
 
-const LANE_KEYS = [
-  ['w', 'a', 's', 'd','x','z','q'],  // Lane 0: WASD
-  ['t', 'f', 'g', 'h','b','e','v','c'],  // Lane 1: TFGH
-  ['i', 'j', 'k', 'l','m','n'],  // Lane 2: IJKL
-  ['p', ';', "'", 'l','.',';',],  // Lane 3: PL;'
-];
 const TARGET_Y_POSITION = 600; // Corresponds to bottom-10 in Target.tsx on a ~700px tall container
 
 export const useGameEngine = () => {
@@ -36,7 +57,6 @@ export const useGameEngine = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const gameLoopRef = useRef<number>();
   const [songDuration, setSongDuration] = useState<number>(0);
-  const [hasHeadphones, setHasHeadphones] = useState<boolean>(false);
 
   // Function to check if headphones are connected
   const checkHeadphones = useCallback(async () => {
@@ -51,7 +71,7 @@ export const useGameEngine = () => {
       // Get all audio output devices
       const devices = await navigator.mediaDevices.enumerateDevices();
       const audioOutputs = devices.filter(
-        (device) => device.kind === 'audiooutput'
+        (device) => device.kind === "audiooutput"
       );
 
       // Check if any audio output device is connected and is not the default speaker
@@ -59,11 +79,11 @@ export const useGameEngine = () => {
         const label = device.label.toLowerCase();
         // Check if the device is a headphone or has "headphone" in its name
         return (
-          label.includes('headphone') ||
-          label.includes('headset') ||
-          label.includes('earphone') ||
-          label.includes('airpods') ||
-          label.includes('bluetooth')
+          label.includes("headphone") ||
+          label.includes("headset") ||
+          label.includes("earphone") ||
+          label.includes("airpods") ||
+          label.includes("bluetooth")
         );
       });
 
@@ -72,18 +92,20 @@ export const useGameEngine = () => {
         audioRef.current.muted = !hasAudioOutput;
       }
 
-      setHasHeadphones(hasAudioOutput);
+      setGameState(prev => ({
+        ...prev,
+        hasHeadphones: hasAudioOutput
+      }));
 
       // Cleanup
       stream.getTracks().forEach((track) => track.stop());
       audioContext.close();
     } catch (error) {
-      console.error('Error checking audio devices:', error);
-      // If we can't check devices, assume no headphones and mute
-      if (audioRef.current) {
-        audioRef.current.muted = true;
-      }
-      setHasHeadphones(false);
+      console.error("Error checking headphones:", error);
+      setGameState(prev => ({
+        ...prev,
+        hasHeadphones: false
+      }));
     }
   }, []);
 
@@ -97,11 +119,11 @@ export const useGameEngine = () => {
     checkHeadphones();
 
     // Listen for device changes
-    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+    navigator.mediaDevices.addEventListener("devicechange", handleDeviceChange);
 
     return () => {
       navigator.mediaDevices.removeEventListener(
-        'devicechange',
+        "devicechange",
         handleDeviceChange
       );
     };
@@ -112,13 +134,13 @@ export const useGameEngine = () => {
       // Reset audio state
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      audioRef.current.muted = !hasHeadphones;
+      audioRef.current.muted = !gameState.hasHeadphones;
 
       // Start playing
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
         playPromise.catch((error) => {
-          console.error('Error playing audio:', error);
+          console.error("Error playing audio:", error);
         });
       }
 
@@ -128,7 +150,7 @@ export const useGameEngine = () => {
         startTime: Date.now(),
       });
     }
-  }, [hasHeadphones]);
+  }, [gameState.hasHeadphones]);
 
   // Listen for audio metadata to get actual duration
   useEffect(() => {
@@ -137,9 +159,9 @@ export const useGameEngine = () => {
       const handleLoadedMetadata = () => {
         setSongDuration(audio.duration * 1000); // Convert to milliseconds
       };
-      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.addEventListener("loadedmetadata", handleLoadedMetadata);
       return () => {
-        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       };
     }
   }, []);
@@ -195,7 +217,7 @@ export const useGameEngine = () => {
 
       // Clear old feedback
       const hitFeedback = prev.hitFeedback.filter(
-        (f) => Date.now() - parseInt(f.id.split('-')[1]) < 500
+        (f) => Date.now() - parseInt(f.id.split("-")[1]) < 500
       );
 
       return {
@@ -211,26 +233,44 @@ export const useGameEngine = () => {
     gameLoopRef.current = requestAnimationFrame(gameLoop);
   }, [gameState.isPlaying, gameState.startTime, songDuration]);
 
+  const setGameMode = useCallback((mode: GameMode) => {
+    setGameState(prev => ({
+      ...prev,
+      gameMode: mode
+    }));
+  }, []);
+
+  const getCurrentLaneKeys = useCallback(() => {
+    return gameState.gameMode === 'easy' ? SIMPLE_LANE_KEYS : COMPLEX_LANE_KEYS;
+  }, [gameState.gameMode]);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
+      const currentLaneKeys = getCurrentLaneKeys();
       // Find which lane this key belongs to
-      const laneIndex = LANE_KEYS.findIndex(keys => keys.includes(key));
+      const laneIndex = currentLaneKeys.findIndex((keys) => keys.includes(key));
       if (laneIndex === -1 || !gameState.isPlaying) return;
 
       setPressedKeys((prev) => {
         const newPressedKeys = { ...prev, [key]: true };
-        
+
         // Check if we have enough keys pressed in this lane
-        const keysPressedInLane = LANE_KEYS[laneIndex].filter(k => newPressedKeys[k]).length;
-        if (keysPressedInLane >= 2) {
+        const keysPressedInLane = currentLaneKeys[laneIndex].filter(
+          (k) => newPressedKeys[k]
+        ).length;
+        
+        // Only require 2 keys in hard mode, 1 key in easy mode
+        const requiredKeys = gameState.gameMode === 'hard' ? 2 : 1;
+        
+        if (keysPressedInLane >= requiredKeys) {
           // Only process the hit if we have enough keys pressed
           const songTime = Date.now() - (gameState.startTime || 0);
-          
+
           setGameState((prev) => {
             const notesInLane = prev.notes.filter((n) => n.lane === laneIndex);
             let hit = false;
-            let result: HitResult = 'miss';
+            let result: HitResult = "miss";
             let newScore = prev.score;
             let newCombo = prev.combo;
             let newHitNotes = prev.hitNotes;
@@ -240,13 +280,13 @@ export const useGameEngine = () => {
               const diff = Math.abs(note.y - TARGET_Y_POSITION);
               if (diff <= HIT_WINDOW_OK) {
                 if (diff <= HIT_WINDOW_PERFECT) {
-                  result = 'perfect';
+                  result = "perfect";
                   newScore += 300;
                 } else if (diff <= HIT_WINDOW_GOOD) {
-                  result = 'good';
+                  result = "good";
                   newScore += 200;
                 } else {
-                  result = 'ok';
+                  result = "ok";
                   newScore += 100;
                 }
                 newCombo += 1;
@@ -291,7 +331,7 @@ export const useGameEngine = () => {
             };
           });
         }
-        
+
         return newPressedKeys;
       });
     },
@@ -300,18 +340,19 @@ export const useGameEngine = () => {
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     const key = e.key.toLowerCase();
+    const currentLaneKeys = getCurrentLaneKeys();
     // Check if the key is in any of the lanes
-    if (LANE_KEYS.some(keys => keys.includes(key))) {
+    if (currentLaneKeys.some((keys) => keys.includes(key))) {
       setPressedKeys((prev) => ({ ...prev, [key]: false }));
     }
-  }, []);
+  }, [getCurrentLaneKeys]);
 
   useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
   }, [handleKeyDown, handleKeyUp]);
 
@@ -355,7 +396,8 @@ export const useGameEngine = () => {
     pressedKeys,
     startGame,
     audioRef,
-    LANE_KEYS,
-    hasHeadphones,
+    LANE_KEYS: getCurrentLaneKeys(),
+    setGameMode,
+    gameMode: gameState.gameMode,
   };
 };
