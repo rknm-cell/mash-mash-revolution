@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { cn } from '@/lib/utils';
 
@@ -24,7 +23,6 @@ export const Target: React.FC<TargetProps & { lane: number }> = ({ laneKey, isPr
           isPressed ? 'bg-white/20 scale-105' : 'bg-white/5'
         )}
       >
-        <span className="text-foreground font-bold text-lg">{laneKey}</span>
       </div>
     </div>
   );

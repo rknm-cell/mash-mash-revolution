@@ -9,6 +9,10 @@ import {
   HIT_WINDOW_OK,
 } from '@/lib/beatmap';
 
+// Add miss sound effect
+const missSound = new Audio('/sounds/miss.mp3');
+missSound.volume = 1.0; // Set volume to 100%
+
 const initialState: GameState = {
   notes: [],
   score: 0,
@@ -22,7 +26,12 @@ const initialState: GameState = {
   hitNotes: 0,
 };
 
-const LANE_KEYS = ['d', 'f', 'j', 'k'];
+const LANE_KEYS = [
+  ['w', 'a', 's', 'd','x','z','q'],  // Lane 0: WASD
+  ['t', 'f', 'g', 'h','b','e','v','c'],  // Lane 1: TFGH
+  ['i', 'j', 'k', 'l','m','n'],  // Lane 2: IJKL
+  ['p', ';', "'", 'l','.',';',],  // Lane 3: PL;'
+];
 const TARGET_Y_POSITION = 600; // Corresponds to bottom-10 in Target.tsx on a ~700px tall container
 
 export const useGameEngine = () => {
@@ -171,6 +180,9 @@ export const useGameEngine = () => {
         .filter((note) => {
           if (note.y > TARGET_Y_POSITION + HIT_WINDOW_OK) {
             newCombo = 0; // Missed note, reset combo
+            // Play miss sound
+            missSound.currentTime = 0;
+            missSound.play().catch(() => {}); // Ignore any play errors
             return false; // Remove note
           }
           return true;
@@ -197,6 +209,7 @@ export const useGameEngine = () => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
+
       if (!LANE_KEYS.includes(key) || !gameState.isPlaying) return;
 
       setPressedKeys((prev) => ({ ...prev, [key]: true }));
@@ -265,6 +278,7 @@ export const useGameEngine = () => {
             newFeedback,
           ],
         };
+
       });
     },
     [gameState.isPlaying, gameState.startTime]
@@ -272,7 +286,8 @@ export const useGameEngine = () => {
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     const key = e.key.toLowerCase();
-    if (LANE_KEYS.includes(key)) {
+    // Check if the key is in any of the lanes
+    if (LANE_KEYS.some(keys => keys.includes(key))) {
       setPressedKeys((prev) => ({ ...prev, [key]: false }));
     }
   }, []);
