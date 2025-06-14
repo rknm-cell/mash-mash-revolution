@@ -12,6 +12,7 @@ import {
   HeadphoneOff,
   Music,
   Zap,
+  Keyboard,
 } from 'lucide-react';
 
 export const GameContainer: React.FC = () => {
@@ -23,6 +24,8 @@ export const GameContainer: React.FC = () => {
     audioRef,
     LANE_KEYS,
     hasHeadphones,
+    toggleControlMode,
+    controlMode,
   } = useGameEngine();
 
   // Update audio source when song changes
@@ -103,14 +106,25 @@ export const GameContainer: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <Button
-                onClick={handleGameOver}
-                size='lg'
-                className='text-2xl p-8'
-              >
-                <Gamepad2 className='mr-4 h-8 w-8' />
-                Back to Song Selection
-              </Button>
+              <div className='flex flex-col items-center gap-4'>
+                <Button
+                  onClick={handleGameOver}
+                  size='lg'
+                  className='text-2xl p-8'
+                >
+                  <Gamepad2 className='mr-4 h-8 w-8' />
+                  Back to Song Selection
+                </Button>
+                <Button 
+                  onClick={toggleControlMode} 
+                  variant="outline" 
+                  size='lg' 
+                  className='text-xl'
+                >
+                  <Keyboard className='mr-4 h-6 w-6' />
+                  {controlMode === 'simple' ? 'Switch to Complex Controls' : 'Switch to Simple Controls'}
+                </Button>
+              </div>
             </>
           ) : (
             <>
@@ -135,6 +149,17 @@ export const GameContainer: React.FC = () => {
             totalNotes={gameState.totalNotes}
             hitNotes={gameState.hitNotes}
           />
+          <div className='absolute top-4 right-4'>
+            <Button 
+              onClick={toggleControlMode} 
+              variant="outline" 
+              size='sm'
+              className='text-sm'
+            >
+              <Keyboard className='mr-2 h-4 w-4' />
+              {controlMode === 'simple' ? 'Simple' : 'Complex'}
+            </Button>
+          </div>
           <div
             className='relative bg-black/50 w-[400px] h-[700px] rounded-lg shadow-2xl shadow-primary/20 overflow-hidden'
             style={{ perspective: '800px' }}
@@ -142,13 +167,14 @@ export const GameContainer: React.FC = () => {
             <div className='flex h-full w-full'>
               {LANE_KEYS.map((keys, index) => {
                 const pressedKeysInLane = keys.filter(key => pressedKeys[key]).length;
+                const requiredKeys = controlMode === 'complex' ? 2 : 1;
                 return (
                   <Lane
                     key={index}
                     laneId={index}
                     notes={gameState.notes.filter((n) => n.lane === index)}
                     laneKey={keys.join('/').toUpperCase()}
-                    isPressed={pressedKeysInLane >= 2}
+                    isPressed={pressedKeysInLane >= requiredKeys}
                     feedback={gameState.hitFeedback.filter(
                       (f) => f.lane === index
                     )}

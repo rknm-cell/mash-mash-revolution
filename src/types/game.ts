@@ -13,6 +13,8 @@ export type HitFeedback = {
   result: HitResult;
 };
 
+export type GameMode = 'easy' | 'hard';
+
 export type GameState = {
   notes: NoteData[];
   score: number;
@@ -21,4 +23,8 @@ export type GameState = {
   isPlaying: boolean;
   hitFeedback: HitFeedback[];
   songTime: number;
+  hitNotes: number;
+  biggestCombo: number;
+  gameMode: GameMode;
+  hasHeadphones: boolean;
 };
