@@ -1,4 +1,4 @@
-export const NOTE_SPEED = 0.5; // pixels per millisecond
+export const NOTE_SPEED = window.innerHeight / 2000; // pixels per millisecond
 export const LANE_COUNT = 4;
 export const HIT_WINDOW_PERFECT = 50;
 export const HIT_WINDOW_GOOD = 100;
@@ -20,12 +20,12 @@ interface Note {
 
 // Audio analysis parameters
 const FFT_SIZE = 2048;
-const BEAT_THRESHOLD = 0.08;
-const ONSET_THRESHOLD = 0.1;
-const MIN_TIME_BETWEEN_NOTES = 50;
-const SUB_BEAT_THRESHOLD = 0.05;
-const MIN_TIME_BETWEEN_SAME_LANE = 500; // Increased from 300ms to 500ms
-const SAFETY_MARGIN = 100; // Additional safety margin for hit windows
+const BEAT_THRESHOLD = 0.03;
+const ONSET_THRESHOLD = 0.05;
+const MIN_TIME_BETWEEN_NOTES = 20;
+const SUB_BEAT_THRESHOLD = 0.02;
+const MIN_TIME_BETWEEN_SAME_LANE = 200;
+const SAFETY_MARGIN = 30;
 
 // Pattern-based generation parameters
 const PATTERN_TYPES = [
@@ -34,6 +34,15 @@ const PATTERN_TYPES = [
   [0, 0, 2, 2], // Double hits
   [0, 3, 1, 2], // Cross pattern
   [0, 1, 1, 2], // Stair pattern
+  [0, 1, 2, 1, 0], // V pattern
+  [0, 0, 1, 1, 2, 2, 3, 3], // Double stair
+  [0, 3, 1, 2, 2, 1, 3, 0], // Mirror pattern
+  [0, 1, 2, 3, 3, 2, 1, 0], // Full mirror
+  [0, 0, 0, 1, 1, 1, 2, 2, 2], // Triple hits
+  [0, 1, 2, 3, 0, 1, 2, 3], // Full sequence
+  [0, 0, 1, 1, 2, 2, 3, 3, 0, 0, 1, 1], // Extended double stair
+  [0, 1, 2, 3, 2, 1, 0, 1, 2, 3], // Extended cross
+  [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3], // Extended triple hits
 ];
 
 // Helper function to check if a time is safe for a new note
@@ -144,20 +153,24 @@ export const generateBeatmap = async (): Promise<Note[]> => {
               .map(({ index }) => index);
 
             if (availableLanes.length > 0) {
-              const complementaryLane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
-              notes.push({
-                id: `note-${idCounter++}`,
-                time: time + 2000,
-                lane: complementaryLane,
-                intensity: currentEnergy * 0.8
-              });
-              lastLaneTimes[complementaryLane] = time;
+              // Add up to 3 additional notes for strong beats (increased from 2)
+              const numAdditionalNotes = Math.min(3, availableLanes.length);
+              for (let j = 0; j < numAdditionalNotes; j++) {
+                const complementaryLane = availableLanes[j];
+                notes.push({
+                  id: `note-${idCounter++}`,
+                  time: time + 2000,
+                  lane: complementaryLane,
+                  intensity: currentEnergy * 0.8
+                });
+                lastLaneTimes[complementaryLane] = time;
+              }
             }
           }
 
           // Update pattern tracking
           patternIndex++;
-          if (patternIndex % 16 === 0) {
+          if (patternIndex % 6 === 0) {
             currentPattern = (currentPattern + 1) % PATTERN_TYPES.length;
           }
         }
@@ -184,17 +197,30 @@ const generateBasicBeatmap = (): Note[] => {
 
   let currentTime = 2000;
   let idCounter = 0;
+  let currentPattern = 0;
+  let patternIndex = 0;
 
   const maxDuration = 3 * 60 * 1000;
   while (currentTime < maxDuration) {
+    // Get current pattern
+    const pattern = PATTERN_TYPES[currentPattern];
+    const lane = pattern[patternIndex % pattern.length];
+
     notes.push({
       id: `note-${idCounter++}`,
       time: currentTime,
-      lane: Math.floor(Math.random() * LANE_COUNT),
+      lane: lane,
       intensity: 0.5
     });
 
-    if (Math.random() > 0.3) {
+    // Update pattern tracking
+    patternIndex++;
+    if (patternIndex % 6 === 0) {
+      currentPattern = (currentPattern + 1) % PATTERN_TYPES.length;
+    }
+
+    // Add notes more frequently
+    if (Math.random() > 0.15) {
       currentTime += msPerBeat;
     } else {
       currentTime += msPerBeat / 2;

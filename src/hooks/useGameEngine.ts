@@ -7,6 +7,7 @@ import {
 } from '@/lib/beatmap';
 import { GameState, HitFeedback, HitResult } from '@/types/game';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Song } from '@/lib/songs';
 
 // Add miss sound effect
 const missSound = new Audio('/sounds/miss.mp3');
@@ -22,15 +23,21 @@ const initialState: GameState = {
   songTime: 0,
 };
 
-const LANE_KEYS = [
-  ['w', 'a', 's', 'd','x','z','q'],  // Lane 0: WASD
-  ['t', 'f', 'g', 'h','b','e','v','c'],  // Lane 1: TFGH
-  ['i', 'j', 'k', 'l','m','n'],  // Lane 2: IJKL
-  ['p', ';', "'", 'l','.',';',],  // Lane 3: PL;'
-];
-const TARGET_Y_POSITION = 600; // Corresponds to bottom-10 in Target.tsx on a ~700px tall container
+// Easy mode uses single keys
+const EASY_MODE_KEYS = ['a', 's', 'd', 'f'];
 
-export const useGameEngine = () => {
+// Normal mode uses multiple keys per lane
+const NORMAL_MODE_KEYS = [
+  ['w', 'a', 's', 'd', 'x', 'z', 'q'],  // Lane 0: WASD
+  ['t', 'f', 'g', 'h', 'b', 'e', 'v', 'c'],  // Lane 1: TFGH
+  ['i', 'j', 'k', 'l', 'm', 'n'],  // Lane 2: IJKL
+  ['p', ';', "'", 'l', '.', ';',],  // Lane 3: PL;'
+];
+
+// Target position is at 90% of the container height (since target is at bottom-[10%])
+const TARGET_Y_POSITION = window.innerHeight * 0.9;
+
+export const useGameEngine = (isEasyMode: boolean = false) => {
   const [gameState, setGameState] = useState<GameState>(initialState);
   const [pressedKeys, setPressedKeys] = useState<Record<string, boolean>>({});
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -187,7 +194,7 @@ export const useGameEngine = () => {
             newCombo = 0; // Missed note, reset combo
             // Play miss sound
             missSound.currentTime = 0;
-            missSound.play().catch(() => {}); // Ignore any play errors
+            missSound.play().catch(() => { }); // Ignore any play errors
             return false; // Remove note
           }
           return true;
@@ -214,99 +221,159 @@ export const useGameEngine = () => {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      // Find which lane this key belongs to
-      const laneIndex = LANE_KEYS.findIndex(keys => keys.includes(key));
-      if (laneIndex === -1 || !gameState.isPlaying) return;
 
-      setPressedKeys((prev) => {
-        const newPressedKeys = { ...prev, [key]: true };
-        
-        // Check if we have enough keys pressed in this lane
-        const keysPressedInLane = LANE_KEYS[laneIndex].filter(k => newPressedKeys[k]).length;
-        if (keysPressedInLane >= 2) {
-          // Only process the hit if we have enough keys pressed
-          const songTime = Date.now() - (gameState.startTime || 0);
-          
-          setGameState((prev) => {
-            const notesInLane = prev.notes.filter((n) => n.lane === laneIndex);
-            let hit = false;
-            let result: HitResult = 'miss';
-            let newScore = prev.score;
-            let newCombo = prev.combo;
-            let newHitNotes = prev.hitNotes;
-            let newBiggestCombo = prev.biggestCombo;
+      if (isEasyMode) {
+        // Easy mode: single key per lane
+        const laneIndex = EASY_MODE_KEYS.indexOf(key);
+        if (laneIndex === -1 || !gameState.isPlaying) return;
 
-            for (const note of notesInLane) {
-              const diff = Math.abs(note.y - TARGET_Y_POSITION);
-              if (diff <= HIT_WINDOW_OK) {
-                if (diff <= HIT_WINDOW_PERFECT) {
-                  result = 'perfect';
-                  newScore += 300;
-                } else if (diff <= HIT_WINDOW_GOOD) {
-                  result = 'good';
-                  newScore += 200;
-                } else {
-                  result = 'ok';
-                  newScore += 100;
-                }
-                newCombo += 1;
-                newHitNotes += 1;
-                // Update biggest combo if current combo is higher
-                if (newCombo > newBiggestCombo) {
-                  newBiggestCombo = newCombo;
-                }
-                hit = true;
-                break; // only hit one note per key press
+        setPressedKeys((prev) => ({ ...prev, [key]: true }));
+        const songTime = Date.now() - (gameState.startTime || 0);
+
+        setGameState((prev) => {
+          // Sort notes by distance to target to ensure closest note is hit first
+          const notesInLane = prev.notes
+            .filter((n) => n.lane === laneIndex)
+            .sort((a, b) => Math.abs(a.y - TARGET_Y_POSITION) - Math.abs(b.y - TARGET_Y_POSITION));
+
+          let hit = false;
+          let result: HitResult = 'miss';
+          let newScore = prev.score;
+          let newCombo = prev.combo;
+          let hitNoteId: string | null = null;
+
+          // Only try to hit the closest note
+          if (notesInLane.length > 0) {
+            const note = notesInLane[0];
+            const diff = Math.abs(note.y - TARGET_Y_POSITION);
+            if (diff <= HIT_WINDOW_OK) {
+              if (diff <= HIT_WINDOW_PERFECT) {
+                result = 'perfect';
+                newScore += 300;
+              } else if (diff <= HIT_WINDOW_GOOD) {
+                result = 'good';
+                newScore += 200;
+              } else {
+                result = 'ok';
+                newScore += 100;
               }
+              newCombo += 1;
+              hit = true;
+              hitNoteId = note.id;
             }
+          }
 
-            const notes = hit
-              ? prev.notes.map((n) => {
-                  if (
-                    n.lane === laneIndex &&
-                    Math.abs(n.y - TARGET_Y_POSITION) <= HIT_WINDOW_OK
-                  ) {
-                    // Mark as fading instead of removing immediately
-                    return { ...n, fading: true };
+          // Mark hit note as fading instead of removing it immediately
+          const notes = prev.notes.map(note =>
+            note.id === hitNoteId ? { ...note, fading: true } : note
+          );
+
+          const newFeedback: HitFeedback = {
+            id: `fb-${Date.now()}`,
+            lane: laneIndex,
+            result,
+          };
+
+          return {
+            ...prev,
+            score: newScore,
+            combo: hit ? newCombo : 0,
+            notes,
+            hitFeedback: [
+              ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
+              newFeedback,
+            ],
+          };
+        });
+      } else {
+        // Normal mode: multiple keys per lane
+        const laneIndex = NORMAL_MODE_KEYS.findIndex(keys => keys.includes(key));
+        if (laneIndex === -1 || !gameState.isPlaying) return;
+
+        setPressedKeys((prev) => {
+          const newPressedKeys = { ...prev, [key]: true };
+
+          // Check if we have enough keys pressed in this lane
+          const keysPressedInLane = NORMAL_MODE_KEYS[laneIndex].filter(k => newPressedKeys[k]).length;
+          if (keysPressedInLane >= 2) {
+            const songTime = Date.now() - (gameState.startTime || 0);
+
+            setGameState((prev) => {
+              // Sort notes by distance to target to ensure closest note is hit first
+              const notesInLane = prev.notes
+                .filter((n) => n.lane === laneIndex)
+                .sort((a, b) => Math.abs(a.y - TARGET_Y_POSITION) - Math.abs(b.y - TARGET_Y_POSITION));
+
+              let hit = false;
+              let result: HitResult = 'miss';
+              let newScore = prev.score;
+              let newCombo = prev.combo;
+              let hitNoteId: string | null = null;
+
+              // Only try to hit the closest note
+              if (notesInLane.length > 0) {
+                const note = notesInLane[0];
+                const diff = Math.abs(note.y - TARGET_Y_POSITION);
+                if (diff <= HIT_WINDOW_OK) {
+                  if (diff <= HIT_WINDOW_PERFECT) {
+                    result = 'perfect';
+                    newScore += 300;
+                  } else if (diff <= HIT_WINDOW_GOOD) {
+                    result = 'good';
+                    newScore += 200;
+                  } else {
+                    result = 'ok';
+                    newScore += 100;
                   }
-                  return n;
-                })
-              : prev.notes;
+                  newCombo += 1;
+                  hit = true;
+                  hitNoteId = note.id;
+                }
+              }
 
-            const newFeedback: HitFeedback = {
-              id: `fb-${Date.now()}`,
-              lane: laneIndex,
-              result,
-            };
+              // Mark hit note as fading instead of removing it immediately
+              const notes = prev.notes.map(note =>
+                note.id === hitNoteId ? { ...note, fading: true } : note
+              );
 
-            return {
-              ...prev,
-              score: newScore,
-              combo: hit ? newCombo : 0,
-              biggestCombo: newBiggestCombo,
-              notes,
-              hitNotes: newHitNotes,
-              hitFeedback: [
-                ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
-                newFeedback,
-              ],
-            };
-          });
-        }
-        
-        return newPressedKeys;
-      });
+              const newFeedback: HitFeedback = {
+                id: `fb-${Date.now()}`,
+                lane: laneIndex,
+                result,
+              };
+
+              return {
+                ...prev,
+                score: newScore,
+                combo: hit ? newCombo : 0,
+                notes,
+                hitFeedback: [
+                  ...prev.hitFeedback.filter((f) => f.lane !== laneIndex),
+                  newFeedback,
+                ],
+              };
+            });
+          }
+
+          return newPressedKeys;
+        });
+      }
     },
-    [gameState.isPlaying, gameState.startTime]
+    [gameState.isPlaying, gameState.startTime, isEasyMode]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
     const key = e.key.toLowerCase();
-    // Check if the key is in any of the lanes
-    if (LANE_KEYS.some(keys => keys.includes(key))) {
-      setPressedKeys((prev) => ({ ...prev, [key]: false }));
+    if (isEasyMode) {
+      if (EASY_MODE_KEYS.includes(key)) {
+        setPressedKeys((prev) => ({ ...prev, [key]: false }));
+      }
+    } else {
+      if (NORMAL_MODE_KEYS.some(keys => keys.includes(key))) {
+        setPressedKeys((prev) => ({ ...prev, [key]: false }));
+      }
     }
-  }, []);
+  }, [isEasyMode]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -340,24 +407,12 @@ export const useGameEngine = () => {
     return () => clearTimeout(fadeTimeout);
   }, [gameState.notes, gameState.isPlaying]);
 
-  // Remove faded notes after a short delay
-  useEffect(() => {
-    if (!gameState.isPlaying) return;
-    const fadeTimeout = setTimeout(() => {
-      setGameState((prev) => ({
-        ...prev,
-        notes: prev.notes.filter((n) => !n.fading),
-      }));
-    }, 300); // 300ms fade duration
-    return () => clearTimeout(fadeTimeout);
-  }, [gameState.notes, gameState.isPlaying]);
-
   return {
     gameState,
     pressedKeys,
     startGame,
     audioRef,
-    LANE_KEYS,
+    LANE_KEYS: isEasyMode ? EASY_MODE_KEYS : NORMAL_MODE_KEYS,
     hasHeadphones,
   };
 };
