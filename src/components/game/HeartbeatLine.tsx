@@ -6,15 +6,20 @@ interface HeartbeatLineProps {
 }
 
 // EKG-like zigzag generator, pulse synced to BPM
-function generateZigzagPath(width: number, height: number, time: number, bpm: number) {
+function generateZigzagPath(
+  width: number,
+  height: number,
+  time: number,
+  bpm: number
+) {
   const points = 40;
   const step = width / points;
   let path = '';
   // Pulse at BPM (beats per second)
   const beatsPerSecond = bpm / 60;
-  let beat = Math.sin(time * beatsPerSecond * 2 * Math.PI);
+  const beat = Math.sin(time * beatsPerSecond * 2 * Math.PI);
   for (let i = 0; i <= points; i++) {
-    let x = i * step;
+    const x = i * step;
     let y = height / 2;
     if (i % 8 === 2) y -= 30 * (0.7 + 0.3 * beat); // up
     else if (i % 8 === 3) y += 40 * (0.7 + 0.3 * beat); // down
@@ -24,16 +29,26 @@ function generateZigzagPath(width: number, height: number, time: number, bpm: nu
   return path;
 }
 
-export const HeartbeatLine: React.FC<HeartbeatLineProps> = ({ audioRef, bpm }) => {
+export const HeartbeatLine: React.FC<HeartbeatLineProps> = ({
+  audioRef,
+  bpm,
+}) => {
   const [time, setTime] = React.useState(0);
-  const [width, setWidth] = React.useState(window.innerWidth);
+  const [width, setWidth] = React.useState(1024); // fallback for SSR
   const requestRef = useRef<number>();
   const height = 120;
 
   useEffect(() => {
-    const handleResize = () => setWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        setWidth(window.innerWidth);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      setWidth(window.innerWidth);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
   }, []);
 
   useEffect(() => {
@@ -49,18 +64,18 @@ export const HeartbeatLine: React.FC<HeartbeatLineProps> = ({ audioRef, bpm }) =
 
   return (
     <svg
-      width="100%"
+      width='100%'
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      className="fixed top-1/2 left-0 -translate-y-1/2 z-0 pointer-events-none"
+      className='fixed top-1/2 left-0 -translate-y-1/2 z-0 pointer-events-none'
       style={{ filter: 'drop-shadow(0 0 8px #e11d48)', opacity: 0.25 }}
     >
       <path
         d={generateZigzagPath(width, height, time, bpm)}
-        stroke="#e11d48"
+        stroke='#e11d48'
         strokeWidth={4}
-        fill="none"
+        fill='none'
       />
     </svg>
   );
-}; 
+};
