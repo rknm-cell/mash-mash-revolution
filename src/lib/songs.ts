@@ -28,4 +28,11 @@ export const songs: Song[] = [
     url: '/12 Pop It In (2).mp3',
     bpm: 128,
   },
+  {
+    id: 'pop-it-in-1',
+    title: 'Pop It In (Version 1)',
+    artist: 'Unknown Artist',
+    url: '/12 Pop It In (2) 1.mp3',
+    bpm: 128,
+  },
 ];

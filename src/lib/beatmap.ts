@@ -46,7 +46,11 @@ const PATTERN_TYPES = [
 ];
 
 // Helper function to check if a time is safe for a new note
-const isTimeSafeForLane = (time: number, lane: number, lastLaneTimes: number[]): boolean => {
+const isTimeSafeForLane = (
+  time: number,
+  lane: number,
+  lastLaneTimes: number[]
+): boolean => {
   const lastTime = lastLaneTimes[lane];
   const timeSinceLastNote = time - lastTime;
 
@@ -111,18 +115,20 @@ export const generateBeatmap = async (): Promise<Note[]> => {
       const nextEnergy = energyLevels[i + 1];
 
       // Convert frame index to time
-      const time = (i * frameLength / sampleRate) * 1000;
+      const time = ((i * frameLength) / sampleRate) * 1000;
 
       // Detect beats (local energy maxima)
-      const isBeat = currentEnergy > BEAT_THRESHOLD &&
+      const isBeat =
+        currentEnergy > BEAT_THRESHOLD &&
         currentEnergy > prevEnergy &&
         currentEnergy > nextEnergy;
 
       // Detect onsets (sudden energy increases)
-      const isOnset = (currentEnergy - prevEnergy) > ONSET_THRESHOLD;
+      const isOnset = currentEnergy - prevEnergy > ONSET_THRESHOLD;
 
       // Detect sub-beats (weaker energy peaks)
-      const isSubBeat = currentEnergy > SUB_BEAT_THRESHOLD &&
+      const isSubBeat =
+        currentEnergy > SUB_BEAT_THRESHOLD &&
         currentEnergy > prevEnergy &&
         currentEnergy > nextEnergy;
 
@@ -136,9 +142,9 @@ export const generateBeatmap = async (): Promise<Note[]> => {
           // Add main note
           notes.push({
             id: `note-${idCounter++}`,
-            time: time + 2000,
+            time: time,
             lane: lane,
-            intensity: currentEnergy
+            intensity: currentEnergy,
           });
 
           // Update last note time for this lane
@@ -149,7 +155,9 @@ export const generateBeatmap = async (): Promise<Note[]> => {
             // Find all available lanes that are safe for note placement
             const availableLanes = lastLaneTimes
               .map((lastTime, index) => ({ index, lastTime }))
-              .filter(({ index }) => isTimeSafeForLane(time, index, lastLaneTimes))
+              .filter(({ index }) =>
+                isTimeSafeForLane(time, index, lastLaneTimes)
+              )
               .map(({ index }) => index);
 
             if (availableLanes.length > 0) {
@@ -159,9 +167,9 @@ export const generateBeatmap = async (): Promise<Note[]> => {
                 const complementaryLane = availableLanes[j];
                 notes.push({
                   id: `note-${idCounter++}`,
-                  time: time + 2000,
+                  time: time,
                   lane: complementaryLane,
-                  intensity: currentEnergy * 0.8
+                  intensity: currentEnergy * 0.8,
                 });
                 lastLaneTimes[complementaryLane] = time;
               }
@@ -179,7 +187,6 @@ export const generateBeatmap = async (): Promise<Note[]> => {
 
     // Clean up
     audioContext.close();
-
   } catch (error) {
     console.error('Error generating beatmap:', error);
     // Fallback to basic beatmap if analysis fails
@@ -195,7 +202,7 @@ const generateBasicBeatmap = (): Note[] => {
   const beatsPerSecond = song.bpm / 60;
   const msPerBeat = 1000 / beatsPerSecond;
 
-  let currentTime = 2000;
+  let currentTime = 0;
   let idCounter = 0;
   let currentPattern = 0;
   let patternIndex = 0;
@@ -210,7 +217,7 @@ const generateBasicBeatmap = (): Note[] => {
       id: `note-${idCounter++}`,
       time: currentTime,
       lane: lane,
-      intensity: 0.5
+      intensity: 0.5,
     });
 
     // Update pattern tracking
